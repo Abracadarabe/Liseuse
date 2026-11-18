@@ -1,0 +1,1308 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Liseuse"><meta name="theme-color" content="#101218"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Liseuse de scans</title>
+<style>
+/* Layout: bibliothèque en étagères par série ; lecteur plein écran, barres escamotables. Dark-first. */
+:root{
+  --bg:#101218; --surface:#191c24; --surface-2:#232733; --line:#2e3342;
+  --fg:#eceef3; --muted:#959cae; --accent:#f2b33d; --accent-ink:#1c1405; --danger:#ff6b5e;
+  --reader-bg:#0a0b0e; --reader-fg:#e9eaee; --bar:rgba(16,18,24,.92);
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f3f4f7; --surface:#ffffff; --surface-2:#e9ebf1; --line:#d6d9e2;
+  --fg:#151821; --muted:#5b6274; --accent:#a86d00; --accent-ink:#ffffff; --danger:#c3352a;
+  --reader-bg:#0a0b0e; --reader-fg:#e9eaee; --bar:rgba(16,18,24,.92); color-scheme:light }}
+:root[data-theme="light"]{
+  --bg:#f3f4f7; --surface:#ffffff; --surface-2:#e9ebf1; --line:#d6d9e2;
+  --fg:#151821; --muted:#5b6274; --accent:#a86d00; --accent-ink:#ffffff; --danger:#c3352a;
+  --reader-bg:#0a0b0e; --reader-fg:#e9eaee; --bar:rgba(16,18,24,.92); color-scheme:light }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.5}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.lib{max-width:1180px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brand h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,40px);letter-spacing:-.02em;margin:0;line-height:1}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:6px 0 0;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:600}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--danger)}
+.formats{margin:-8px 0 0;color:var(--muted);font-size:13px}
+
+.resume{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.resume-card{display:flex;gap:14px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;min-width:0}
+.resume-card:hover{border-color:var(--accent)}
+.resume-card img,.resume-card .ph{width:56px;height:76px;object-fit:cover;border-radius:6px;flex:none;background:var(--surface-2)}
+.resume-card .t{min-width:0;display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.resume-card b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resume-card small{color:var(--muted)}
+
+.tools input{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.shelf{display:flex;flex-direction:column;gap:12px}
+.shelf h2{font-family:var(--display);font-weight:600;font-size:17px;margin:0;display:flex;gap:10px;align-items:baseline;text-wrap:balance}
+.shelf h2 small{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+@media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+.card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cover{display:block;width:100%;padding:0;border:0;background:var(--surface-2);border-radius:10px;overflow:hidden;aspect-ratio:3/4;position:relative}
+.cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.cover:hover img{transform:scale(1.03)}
+.prog{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(0,0,0,.45)}
+.prog i{display:block;height:100%;background:var(--accent)}
+.chip{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--accent);color:var(--accent-ink)}
+.chip.read{background:rgba(10,11,14,.75);color:#fff}
+.card .meta{display:flex;gap:6px;align-items:flex-start;justify-content:space-between}
+.card .meta div{min-width:0}
+.card .name{font-weight:600;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.card .sub{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.more{flex:none;border:0;background:transparent;color:var(--muted);border-radius:8px;width:30px;height:30px;font-size:18px;line-height:1}
+.more:hover{background:var(--surface-2);color:var(--fg)}
+
+.empty{border:1.5px dashed var(--line);border-radius:16px;padding:40px 20px;text-align:center;color:var(--muted);
+  background-image:radial-gradient(var(--line) 1px,transparent 1.4px);background-size:9px 9px}
+.empty b{display:block;color:var(--fg);font-size:17px;margin-bottom:6px}
+.help{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.help summary{font-weight:600;cursor:pointer}
+.help ol{margin:10px 0 4px;padding-left:20px;color:var(--muted);max-width:65ch}
+.help li{margin-bottom:4px}
+.foot{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+
+/* ---------- lecteur ---------- */
+.reader{position:fixed;inset:0;background:var(--reader-bg);color:var(--reader-fg);z-index:50}
+.pages{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.pages.scroll{display:flex;flex-direction:column;align-items:center}
+.pg{position:relative;width:min(100%,var(--readw,900px));background:#15171c;flex:none}
+.pg img{display:block;width:100%;height:100%}
+.pages.scroll.gap .pg{margin-bottom:8px}
+.pg .num{position:absolute;inset:0;display:grid;place-items:center;color:#4a4f5c;font-family:var(--display);font-size:22px}
+.pages.paged{display:flex;align-items:center;justify-content:center}
+.pages.paged.fit-width{align-items:flex-start}
+.pages.paged img.single{display:block;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.pages.paged.fit-screen img.single{max-width:100%;max-height:100%;object-fit:contain;width:auto;height:auto}
+.pages.paged.fit-width img.single{width:min(100%,var(--readw,900px));height:auto}
+.pages.paged{touch-action:pan-y pinch-zoom}
+.turn-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.reader.hide-bars{cursor:none}
+.reader.hide-bars .pages{cursor:auto}
+.endcard{width:min(100%,560px);padding:48px 20px 120px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;flex:none}
+.endcard h3{font-family:var(--display);font-weight:600;margin:0;font-size:18px}
+.endcard p{margin:0;color:#9aa0ae}
+.pages.paged .endcard{padding:20px}
+.rbtn{border:1px solid #333846;background:#1b1e26;color:#e9eaee;border-radius:10px;padding:10px 16px;font-weight:600}
+.rbtn.primary{background:#f2b33d;color:#1c1405;border-color:transparent}
+.rbtn:disabled{opacity:.4;cursor:default}
+
+.bar{position:absolute;left:0;right:0;background:var(--bar);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;align-items:center;gap:10px;transition:transform .2s,opacity .2s;z-index:2;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.topbar{top:0;padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-bottom:8px}
+.botbar{bottom:0;padding-top:10px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+.reader.hide-bars .topbar{transform:translateY(-100%);opacity:0;pointer-events:none}
+.reader.hide-bars .botbar{transform:translateY(100%);opacity:0;pointer-events:none}
+.ibtn{border:0;background:transparent;color:#e9eaee;border-radius:9px;min-width:38px;height:38px;padding:0 10px;font-weight:600;flex:none}
+.ibtn:hover{background:rgba(255,255,255,.08)}
+.ibtn:disabled{opacity:.3}
+.rtitle{min-width:0;flex:1;display:flex;flex-direction:column;line-height:1.25}
+.rtitle b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.rtitle small{color:#9aa0ae;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pnum{font-variant-numeric:tabular-nums;font-size:13px;color:#c9ccd5;flex:none}
+#slider{flex:1;min-width:0;accent-color:#f2b33d}
+#slider.rtl{direction:rtl}
+.settings{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 70px);z-index:3;
+  width:min(330px,calc(100% - 24px));background:#1b1e26;border:1px solid #333846;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px;color:#e9eaee}
+.settings label,.settings .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#9aa0ae;font-weight:700}
+.seg{display:flex;background:#0f1116;border-radius:10px;padding:3px;gap:3px;margin-top:6px}
+.seg button{flex:1;border:0;background:transparent;color:#c9ccd5;border-radius:8px;padding:7px 6px;font-size:13px;font-weight:600}
+.seg button.on{background:#f2b33d;color:#1c1405}
+.settings input[type=range]{width:100%;accent-color:#f2b33d;margin-top:6px}
+
+/* ---------- feuille d'actions, toast, dépôt ---------- */
+.sheet-wrap{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){.sheet-wrap{align-items:center}}
+.sheet{width:min(440px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:18px max(16px,env(safe-area-inset-left,0px)) calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;flex-direction:column;gap:12px}
+@media (min-width:700px){.sheet{border-radius:16px}}
+.sheet h3{margin:0;font-size:16px;overflow-wrap:anywhere}
+.sheet label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.sheet input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:15px;color:var(--fg)}
+.sheet .row{display:flex;gap:8px;flex-wrap:wrap}
+.sheet .row .btn{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:90;
+  width:min(420px,calc(100% - 32px));background:var(--surface-2);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:10px 14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:8px;font-size:14px}
+.tbar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.tbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+.drop{position:fixed;inset:12px;z-index:95;border:3px dashed var(--accent);border-radius:20px;background:rgba(16,18,24,.85);color:#fff;
+  display:grid;place-items:center;font-family:var(--display);font-size:22px;pointer-events:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div id="lib" class="lib">
+  <header class="top">
+    <div class="brand">
+      <h1>Liseuse<span>.</span></h1>
+      <p>Tes scans au même endroit, lus d'une traite, reprise à la bonne page.</p>
+    </div>
+    <div class="actions">
+      <button id="btnFiles" class="btn primary">Importer des fichiers</button>
+      <button id="btnDir" class="btn">Importer un dossier</button>
+    </div>
+  </header>
+  <p class="formats">Images (JPG, PNG, WEBP), archives .zip ou .cbz, PDF de scans. Un dossier Google Drive téléchargé en .zip s'importe tel quel, un chapitre par sous-dossier. Sur Mac, tu peux aussi glisser-déposer.</p>
+  <section id="resume" class="resume" aria-label="Reprendre la lecture"></section>
+  <div class="tools"><input id="q" type="search" placeholder="Rechercher un chapitre ou une série" aria-label="Rechercher"></div>
+  <div id="shelves" style="display:flex;flex-direction:column;gap:28px"></div>
+  <details class="help">
+    <summary>Importer depuis Google Drive sur iPhone</summary>
+    <ol>
+      <li>Installe l'app Google Drive et connecte-toi.</li>
+      <li>Ouvre l'app Fichiers, touche « … » puis « Modifier » et active Google Drive.</li>
+      <li>Ici, touche « Importer des fichiers », puis « Parcourir » et choisis Drive. Tu peux sélectionner plusieurs images, un .zip ou un PDF.</li>
+      <li>Une fois importé, le chapitre reste sur ce téléphone : plus besoin de réseau pour le relire.</li>
+    </ol>
+  </details>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="syncAll" class="btn" hidden>Synchroniser</button><button id="cleanUp" class="btn" hidden>Libérer de l'espace</button></div>
+  <footer id="foot" class="foot"></footer>
+  <input type="file" id="fileIn" multiple hidden>
+  <input type="file" id="dirIn" webkitdirectory multiple hidden>
+</div>
+
+<div id="reader" class="reader" hidden>
+  <div id="pages" class="pages"></div>
+  <div class="bar topbar">
+    <button id="rBack" class="ibtn" aria-label="Retour à la bibliothèque">‹ Retour</button>
+    <div class="rtitle"><b id="rTitle"></b><small id="rSeries"></small></div>
+    <span id="rNum" class="pnum"></span>
+    <button id="rFull" class="ibtn" aria-label="Plein écran" title="Plein écran (seulement la page)">⛶</button>
+  </div>
+  <div class="bar botbar">
+    <button id="rPrevCh" class="ibtn" aria-label="Chapitre précédent" title="Chapitre précédent">⏮</button>
+    <input id="slider" type="range" min="1" max="1" value="1" aria-label="Page">
+    <button id="rNextCh" class="ibtn" aria-label="Chapitre suivant" title="Chapitre suivant">⏭</button>
+    <button id="rSet" class="ibtn" aria-label="Réglages de lecture">Aa</button>
+  </div>
+  <div id="settings" class="settings" hidden>
+    <div><span class="lbl">Affichage</span>
+      <div class="seg" data-set="mode"><button data-val="scroll">Défilement</button><button data-val="paged">Page par page</button></div></div>
+    <div><span class="lbl">Sens de lecture (page par page)</span>
+      <div class="seg" data-set="dir"><button data-val="ltr">Gauche → droite</button><button data-val="rtl">Manga ←</button></div></div>
+    <div><span class="lbl">Ajustement (page par page)</span>
+      <div class="seg" data-set="fit"><button data-val="screen">Écran entier</button><button data-val="width">Largeur</button></div></div>
+    <div><span class="lbl">Page qui se tourne (page par page)</span>
+      <div class="seg" data-set="turn"><button data-val="on">Activée</button><button data-val="off">Désactivée</button></div></div>
+    <div><span class="lbl">Espace entre les pages (défilement)</span>
+      <div class="seg" data-set="gap"><button data-val="off">Collées</button><button data-val="on">Espacées</button></div></div>
+    <div><label for="widthIn">Largeur max sur grand écran : <span id="widthVal"></span></label>
+      <input id="widthIn" type="range" min="400" max="1600" step="20"></div>
+  </div>
+</div>
+
+<div id="sheet" class="sheet-wrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <h3 id="shTitle"></h3>
+    <label>Titre<input id="shName" type="text"></label>
+    <label>Série<input id="shSeries" type="text" placeholder="Sans série"></label>
+    <button id="shSync" class="btn primary" hidden>Synchroniser avec mes autres appareils</button>
+    <div class="row"><button id="shSave" class="btn primary">Enregistrer</button><button id="shRead" class="btn"></button></div>
+    <div class="row"><button id="shDel" class="btn danger">Supprimer</button><button id="shClose" class="btn">Fermer</button></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden role="status"><span id="toastText"></span><div class="tbar" id="toastTrack"><i id="toastBar"></i></div></div>
+<div id="drop" class="drop" hidden>Dépose tes scans ici</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const coll = new Intl.Collator('fr', {numeric:true, sensitivity:'base'});
+const IMG_RE = /\.(jpe?g|png|webp|gif|avif|bmp)$/i;
+const MIME = {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',avif:'image/avif',bmp:'image/bmp'};
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+const JSZIP = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const stripExt = n => n.replace(/\.[^.\/]+$/, '');
+const base = p => p.split('/').filter(Boolean).pop() || '';
+const dirOf = p => { const a = p.split('/').filter(Boolean); a.pop(); return a.join('/'); };
+const ls = { get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+             set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } };
+
+/* ---------------- stockage (IndexedDB, repli en mémoire) ---------------- */
+const DB = (() => {
+  let dbp = null; const mem = {chapters:new Map(), blobs:new Map()};
+  function open(){
+    if (dbp) return dbp;
+    dbp = new Promise(res => {
+      try {
+        const r = indexedDB.open('liseuse-scans', 1);
+        r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('chapters', {keyPath:'id'}); d.createObjectStore('blobs'); };
+        r.onsuccess = () => res(r.result);
+        r.onerror = r.onblocked = () => res(null);
+      } catch(e){ res(null); }
+    });
+    return dbp;
+  }
+  function tx(d, store, mode, fn){
+    return new Promise((res, rej) => {
+      try {
+        const t = d.transaction(store, mode); const req = fn(t.objectStore(store));
+        t.oncomplete = () => res(req ? req.result : undefined);
+        t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abort'));
+      } catch(e){ rej(e); }
+    });
+  }
+  return {
+    async persistent(){ return !!(await open()); },
+    async all(){ const d = await open(); return d ? tx(d,'chapters','readonly',s=>s.getAll()) : [...mem.chapters.values()]; },
+    async put(c){ const d = await open(); if (!d){ mem.chapters.set(c.id,c); return; } return tx(d,'chapters','readwrite',s=>s.put(c)); },
+    async putBlob(k,b){ const d = await open(); if (!d){ mem.blobs.set(k,b); return; } return tx(d,'blobs','readwrite',s=>s.put(b,k)); },
+    async getBlob(k){ const d = await open(); return d ? tx(d,'blobs','readonly',s=>s.get(k)) : mem.blobs.get(k); },
+    async remove(c){
+      const d = await open();
+      if (!d){ mem.chapters.delete(c.id); for (const k of [...mem.blobs.keys()]) if (k.startsWith(c.id+':')) mem.blobs.delete(k); return; }
+      await tx(d,'chapters','readwrite',s=>s.delete(c.id));
+      await tx(d,'blobs','readwrite',s=>s.delete(IDBKeyRange.bound(c.id+':', c.id+':￿')));
+    }
+  };
+})();
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+
+/* ---------------- synchronisation (db + assets du compte Claude) ---------------- */
+const Cloud = {db:null, assets:null, ready:false, loaded:false, note:'', chapters:new Map(), progress:new Map(), journals:new Map(), usage:null};
+async function initCloud(){
+  if (!window.claude || !window.claude.use) return;
+  try {
+    const [db, assets] = await Promise.all([window.claude.use('db'), window.claude.use('assets')]);
+    if (!db || !assets) return;
+    Object.assign(Cloud, {db, assets, ready:true});
+    const timer = setTimeout(() => { if (!Cloud.loaded){ Cloud.note = 'Synchronisation injoignable pour le moment, la liste peut être incomplète.'; renderLibrary(); } }, 10000);
+    db.collection('chapters').onSnapshot(s => {
+      Cloud.chapters = new Map(s.docs.map(d => [d.id, d.data()]));
+      if (!s.metadata.fromCache && !Cloud.loaded){ Cloud.loaded = true; clearTimeout(timer); Cloud.note = ''; prune(); maybeResume(); }
+      renderLibrary();
+    }, e => { console.error(e); clearTimeout(timer); Cloud.note = 'Synchronisation interrompue. Recharge la page pour réessayer.'; renderLibrary(); });
+    db.collection('progress').onSnapshot(s => { Cloud.progress = new Map(s.docs.map(d => [d.id, d.data()])); renderLibrary(); }, e => console.error(e));
+    // journal des envois en cours : protège une synchro active et retrouve les fichiers d'une synchro interrompue
+    db.collection('uploads').onSnapshot(s => { Cloud.journals = new Map(s.docs.map(d => [d.id, d.data()])); if (!s.metadata.fromCache) Cloud.journalsLoaded = true; maybeResume(); renderLibrary(); }, e => console.error(e));
+    refreshUsage();
+    renderLibrary();
+  } catch(e){ console.error(e); }
+}
+async function refreshUsage(){ if (!Cloud.ready) return; try { const r = await Cloud.assets.list(); Cloud.usage = r.usage; Cloud.assetList = r.assets || []; renderLibrary(); } catch(e){} }
+// fichiers envoyés qu'aucun chapitre ne référence (synchro interrompue, suppression ratée).
+// Protégés : ceux d'une synchro active (journal mis à jour il y a moins de 10 min) et ceux de moins de 10 min.
+const ACTIVE_WINDOW = 10 * 60e3;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function withRetry(fn){
+  for (let tries = 0; ; tries++){
+    try { return await fn(); }
+    catch(e){
+      const code = e && e.code;
+      if ((code === 'rate_limited' || code === 'resource_exhausted') && tries < 6){ await wait(3000 * Math.pow(2, Math.min(tries, 4))); continue; }
+      if (code === 'store_unavailable' && tries < 2){ await wait(1500); continue; }
+      throw e;
+    }
+  }
+}
+function orphanAssets(){
+  if (!Cloud.ready || !Cloud.loaded || !Cloud.assetList) return [];
+  const used = new Set(), now = Date.now();
+  for (const d of Cloud.chapters.values()) for (const id of [d.thumbId, d.pdfId, ...(d.pageIds || [])]) if (id) used.add(id);
+  for (const j of Cloud.journals.values()) if (now - (j.at || 0) < ACTIVE_WINDOW) for (const id of j.ids || []) used.add(id);
+  return Cloud.assetList.filter(a => !used.has(a.id) && now - Date.parse(a.createdAt) > ACTIVE_WINDOW);
+}
+let cleaning = false, cleanArmed = false;
+async function cleanOrphans(){
+  if (cleaning) return;
+  await refreshUsage();
+  const list = orphanAssets(); if (!list.length){ toast('Rien à nettoyer.'); return; }
+  cleaning = true; cleanArmed = false; renderLibrary();
+  let done = 0, err = null, batch = list, total = list.length;
+  // plusieurs passes : si la liste renvoyée est partielle, la suivante voit les fichiers restants
+  for (let round = 0; batch.length && !err && round < 30; round++){
+    for (const a of batch){
+      toast(`Nettoyage : ${done} / ${total} fichiers supprimés`, Math.min(1, done / total), true);
+      try { await withRetry(() => Cloud.assets.delete(a.id)); done++; } catch(e){ err = e; break; }
+    }
+    if (err) break;
+    await refreshUsage(); batch = orphanAssets(); total = done + batch.length;
+  }
+  if (!err){
+    // les journaux de synchros interrompues ne servent plus
+    const now = Date.now();
+    for (const [id, j] of Cloud.journals) if (now - (j.at || 0) >= ACTIVE_WINDOW) await Cloud.db.doc('uploads/' + id).delete().catch(() => {});
+  }
+  cleaning = false;
+  toast(err ? `${done} fichier${done>1?'s':''} supprimé${done>1?'s':''}, puis le nettoyage s'est arrêté. Réessaie dans une minute.` : `${done} fichier${done>1?'s':''} inutile${done>1?'s':''} supprimé${done>1?'s':''}.`);
+  refreshUsage();
+}
+// un chapitre supprimé depuis un autre appareil disparaît aussi d'ici
+async function prune(){ try { for (const l of await DB.all()) if (l.synced && !Cloud.chapters.has(l.id)) await DB.remove(l); } catch(e){} }
+const OK_TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
+async function toUploadable(blob){
+  if (OK_TYPES.includes(blob.type)) return blob;
+  const d = await decode(blob); if (!d) throw {code:'unsupported_type'};
+  const c = document.createElement('canvas'); c.width = d.w; c.height = d.h; c.getContext('2d').drawImage(d.src, 0, 0); d.done();
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .9));
+}
+// garder l'écran allumé pendant une synchro (iPhone : écran verrouillé = page suspendue)
+let wakeLock = null, wakeWanted = 0;
+async function lockScreen(){ try { if (!wakeLock && navigator.wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch(e){} }
+function releaseScreen(){ if (wakeWanted > 0) return; try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && wakeWanted > 0) lockScreen(); });
+
+async function syncChapter(l, label){
+  if (!Cloud.ready || l.demo || l.synced) return false;
+  label = label || l.title;
+  const journal = Cloud.db.doc('uploads/' + l.id);
+  const n = l.kind === 'pdf' ? 0 : l.count;
+  // reprise : on garde les fichiers d'une tentative précédente qui existent encore
+  const prev = Cloud.journals.get(l.id);
+  let alive = null;
+  if (prev){ try { alive = new Set((await Cloud.assets.list()).assets.map(a => a.id)); } catch(e){} }
+  const keep = id => (id && alive && alive.has(id)) ? id : null;
+  const pageIds = Array.from({length:n}, (_, i) => prev && Array.isArray(prev.pageIds) && prev.pageIds.length === n ? keep(prev.pageIds[i]) : null);
+  let thumbId = prev ? keep(prev.thumbId) : null, pdfId = prev ? keep(prev.pdfId) : null;
+  const uploaded = [];
+  let dirty = 0;
+  const saveJournal = force => { if (!force && dirty < 6) return; dirty = 0;
+    return journal.set({ids:[thumbId, pdfId, ...pageIds].filter(Boolean), pageIds, thumbId, pdfId, at:Date.now(), title:l.title}).catch(e => console.error(e)); };
+  const up = async b => { const r = await withRetry(() => Cloud.assets.upload(b)); uploaded.push(r.id); dirty++; return r.id; };
+  wakeWanted++; lockScreen();
+  try {
+    toast('Synchronisation de ' + label + '… Garde la Liseuse ouverte et l\'écran allumé.', 0, true);
+    await saveJournal(true);
+    if (l.thumb && !thumbId) thumbId = await up(l.thumb);
+    if (l.kind === 'pdf'){
+      if (!pdfId){
+        const b = await DB.getBlob(l.id + ':pdf');
+        if (b.size > 20 * 1048576) throw {code:'too_large'};
+        pdfId = await up(b.type === 'application/pdf' ? b : new Blob([b], {type:'application/pdf'}));
+      }
+    } else {
+      let next = 0, failed = null, ok = pageIds.filter(Boolean).length;
+      const show = () => toast(`Synchronisation de ${label} : ${ok} / ${n} pages. Garde la Liseuse ouverte et l'écran allumé.`, ok / n, true);
+      show();
+      const worker = async () => {
+        while (!failed){
+          const i = next++; if (i >= n) return; if (pageIds[i]) continue;
+          try {
+            const blob = await DB.getBlob(l.id + ':' + i); if (!blob) throw {code:'local_missing'};
+            pageIds[i] = await up(await toUploadable(blob)); ok++; show(); await saveJournal(false);
+          } catch(e){ failed = failed || e; }
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      if (failed) throw failed;
+    }
+    await withRetry(() => Cloud.db.doc('chapters/' + l.id).set({title:l.title, series:l.series || '', kind:l.kind, count:l.count, dims:l.dims, thumbId, pageIds: l.kind === 'pdf' ? null : pageIds, pdfId, addedAt:l.addedAt}));
+    if (l.lastRead) await Cloud.db.doc('progress/' + l.id).set({page:l.page, lastRead:l.lastRead, done:!!l.done}).catch(() => {});
+    await journal.delete().catch(() => {});
+    l.synced = true; await DB.put(l);
+    return true;
+  } catch(e){
+    if (e && (e.code === 'quota_or_state' || e.code === 'too_large')){
+      // pas de reprise possible : on rend la place tout de suite
+      for (const id of uploaded){ try { await withRetry(() => Cloud.assets.delete(id)); } catch(err){} }
+      await journal.delete().catch(() => {});
+    } else {
+      dirty = 1; await saveJournal(true); // la prochaine tentative reprendra où elle s'est arrêtée
+    }
+    throw e;
+  } finally { wakeWanted--; releaseScreen(); }
+}
+// relance automatique des synchros interrompues (page fermée, écran verrouillé)
+let resumeTried = false;
+function maybeResume(){
+  if (resumeTried || !Cloud.loaded || !Cloud.journalsLoaded || syncing) return;
+  resumeTried = true;
+  setTimeout(async () => {
+    const local = await DB.all().catch(() => []);
+    const todo = local.filter(l => !l.synced && !l.demo && Cloud.journals.has(l.id) && !Cloud.chapters.has(l.id));
+    if (todo.length) syncLocal(todo.map(l => ({localRec:l})));
+  }, 1500);
+}
+function syncMessage(e){
+  const code = e && e.code;
+  if (code === 'too_large') return 'Un fichier dépasse 20 Mo : ce chapitre reste seulement sur cet appareil.';
+  if (code === 'quota_or_state' || code === 'quota_exceeded') return 'L\'espace de synchronisation est plein : supprime des chapitres lus pour en libérer.';
+  if (code === 'rate_limited' || code === 'resource_exhausted') return 'Trop d\'envois d\'un coup : la synchronisation reprendra où elle s\'est arrêtée, réessaie dans une minute.';
+  if (code === 'local_missing') return 'Les pages de ce chapitre ne sont plus sur cet appareil : réimporte-le.';
+  return 'La synchronisation a échoué : le chapitre reste sur cet appareil, tu peux réessayer via « ⋯ ».';
+}
+let progChain = Promise.resolve();
+function writeProgress(id, p){ if (!Cloud.ready) return; progChain = progChain.then(() => Cloud.db.doc('progress/' + id).set(p)).catch(e => console.error(e)); }
+function setProgress(c, p){
+  Object.assign(c, p);
+  if (c.localRec){ Object.assign(c.localRec, p); DB.put(c.localRec).catch(() => {}); }
+  if (c.cloud) writeProgress(c.id, {page:c.page, lastRead:c.lastRead, done:!!c.done});
+}
+
+/* ---------------- utilitaires ---------------- */
+function loadScript(src){
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res;
+    s.onerror = () => rej(new Error('Chargement impossible : vérifie ta connexion.')); document.head.appendChild(s); });
+}
+let zipP, pdfP;
+const NativeZip = {
+  async loadAsync(file){
+    const size = file.size, tailLen = Math.min(size, 66000);
+    const tail = new Uint8Array(await file.slice(size - tailLen).arrayBuffer());
+    let e = -1; for (let i = tail.length - 22; i >= 0; i--) if (tail[i] === 0x50 && tail[i+1] === 0x4b && tail[i+2] === 5 && tail[i+3] === 6){ e = i; break; }
+    if (e < 0) throw new Error('zip');
+    const dv = new DataView(tail.buffer, tail.byteOffset);
+    const total = dv.getUint16(e + 10, true), cdSize = dv.getUint32(e + 12, true), cdOff = dv.getUint32(e + 16, true);
+    if (cdOff === 0xFFFFFFFF || total === 0xFFFF) throw new Error('zip64 non géré');
+    const cd = new Uint8Array(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), cv = new DataView(cd.buffer);
+    const td = new TextDecoder('utf-8'), files = {}; let p = 0;
+    for (let k = 0; k < total && p + 46 <= cd.length; k++){
+      if (cv.getUint32(p, true) !== 0x02014b50) break;
+      const method = cv.getUint16(p + 10, true), csize = cv.getUint32(p + 20, true), nlen = cv.getUint16(p + 28, true),
+            xlen = cv.getUint16(p + 30, true), clen = cv.getUint16(p + 32, true), lho = cv.getUint32(p + 42, true);
+      const name = td.decode(cd.subarray(p + 46, p + 46 + nlen)); p += 46 + nlen + xlen + clen;
+      const read = async () => {
+        const lh = new DataView(await file.slice(lho, lho + 30).arrayBuffer());
+        const start = lho + 30 + lh.getUint16(26, true) + lh.getUint16(28, true), raw = file.slice(start, start + csize);
+        if (method === 0) return raw;
+        if (method === 8){ if (typeof DecompressionStream === 'undefined') throw new Error('décompression indisponible');
+          return new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob(); }
+        throw new Error('méthode zip ' + method);
+      };
+      files[name] = {name, dir: name.endsWith('/'), async(type){ return read().then(b => type === 'arraybuffer' ? b.arrayBuffer() : b); }};
+    }
+    return {files};
+  }
+};
+const ensureZip = async () => NativeZip;
+const ensurePdf = () => pdfP ||= (async () => {
+  await loadScript(PDFJS + 'pdf.min.js');
+  await loadScript(PDFJS + 'pdf.worker.min.js'); // rendu dans la page (les workers externes sont bloqués)
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+  return window.pdfjsLib;
+})();
+async function openPdf(blob){
+  const lib = await ensurePdf();
+  const data = new Uint8Array(await blob.arrayBuffer());
+  return lib.getDocument({data, isEvalSupported:false}).promise;
+}
+function decode(blob){
+  return new Promise(res => {
+    const u = URL.createObjectURL(blob); const im = new Image();
+    im.onload = () => res({src:im, w:im.naturalWidth, h:im.naturalHeight, done(){ URL.revokeObjectURL(u); }});
+    im.onerror = () => { URL.revokeObjectURL(u); res(null); };
+    im.src = u;
+  });
+}
+async function dims(blob){
+  if (window.createImageBitmap){ try { const b = await createImageBitmap(blob); const r = [b.width, b.height]; b.close && b.close(); return r; } catch(e){} }
+  const d = await decode(blob); if (!d) return null; d.done(); return [d.w, d.h];
+}
+function thumbFrom(src, w, h){
+  const c = document.createElement('canvas'); c.width = 300; c.height = 400;
+  const g = c.getContext('2d'); const s = Math.max(300/w, 400/h);
+  g.fillStyle = '#222'; g.fillRect(0,0,300,400);
+  g.drawImage(src, (300 - w*s)/2, 0, w*s, h*s);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .82));
+}
+let pdfQueue = Promise.resolve();
+function enqueue(fn){ const p = pdfQueue.then(fn, fn); pdfQueue = p.catch(()=>{}); return p; }
+async function renderPdfPage(doc, i, targetW, type='image/jpeg'){
+  const p = await doc.getPage(i+1); const v1 = p.getViewport({scale:1});
+  const vp = p.getViewport({scale: targetW / v1.width});
+  const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  await p.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
+  p.cleanup();
+  return new Promise(r => c.toBlob(r, type, .9));
+}
+
+/* ---------------- toast ---------------- */
+let toastTimer;
+function toast(text, frac, sticky){
+  clearTimeout(toastTimer); $('#toast').hidden = false; $('#toastText').textContent = text;
+  $('#toastTrack').hidden = frac == null; if (frac != null) $('#toastBar').style.width = Math.round(frac*100) + '%';
+  if (!sticky) toastTimer = setTimeout(() => $('#toast').hidden = true, 3800);
+}
+
+/* ---------------- import ---------------- */
+async function saveImageChapter({title, series, blobs}, onPage){
+  blobs.sort((a,b) => coll.compare(a.name, b.name));
+  const id = uid(), dimsList = []; let thumb = null, n = 0;
+  for (const {blob} of blobs){
+    let d;
+    if (!thumb){ const dec = await decode(blob); if (!dec){ onPage(); continue; } d = [dec.w, dec.h]; thumb = await thumbFrom(dec.src, dec.w, dec.h); dec.done(); }
+    else d = await dims(blob);
+    onPage();
+    if (!d) continue;
+    await DB.putBlob(id+':'+n, blob); dimsList.push(d); n++;
+  }
+  if (!n) return null;
+  const ch = {id, title, series, kind:'images', count:n, dims:dimsList, thumb, addedAt:Date.now(), lastRead:0, page:0, done:false};
+  await DB.put(ch); return ch;
+}
+async function savePdfChapter({title, series, blob}){
+  const doc = await openPdf(blob); const dimsList = [];
+  for (let i = 1; i <= doc.numPages; i++){ const p = await doc.getPage(i); const v = p.getViewport({scale:1}); dimsList.push([Math.round(v.width), Math.round(v.height)]); }
+  const tb = await renderPdfPage(doc, 0, 300);
+  const dec = tb && await decode(tb); const thumb = dec ? await thumbFrom(dec.src, dec.w, dec.h) : null; dec && dec.done();
+  doc.destroy();
+  const id = uid();
+  await DB.putBlob(id+':pdf', blob);
+  const ch = {id, title, series, kind:'pdf', count:dimsList.length, dims:dimsList, thumb, addedAt:Date.now(), lastRead:0, page:0, done:false};
+  await DB.put(ch); return ch;
+}
+
+// PDF de scans : chaque page est une image JPEG brute dans le fichier ; on les récupère telles quelles
+async function extractPdfImages(file, onProgress){
+  const CH = 8 * 1048576, starts = [], seen = new Set();
+  for (let off = 0; off < file.size; off += CH){
+    const from = Math.max(0, off - 16), buf = new Uint8Array(await file.slice(from, Math.min(file.size, off + CH + 16)).arrayBuffer());
+    for (let i = buf.indexOf(0xFF); i >= 0 && i + 2 < buf.length; i = buf.indexOf(0xFF, i + 1)){
+      if (buf[i+1] !== 0xD8 || buf[i+2] !== 0xFF || i < 8) continue;
+      // doit suivre « stream » + fin de ligne
+      let j = i - 1; if (buf[j] === 0x0A) j--; if (buf[j] === 0x0D) j--;
+      if (buf[j] === 0x6D && buf[j-1] === 0x61 && buf[j-2] === 0x65 && buf[j-3] === 0x72 && buf[j-4] === 0x74 && buf[j-5] === 0x73){
+        const abs = from + i; if (!seen.has(abs)){ seen.add(abs); starts.push(abs); }
+      }
+    }
+    onProgress && onProgress(Math.min(.3, .3 * (off + CH) / file.size));
+  }
+  starts.sort((a, b) => a - b);
+  const END = [0x65,0x6E,0x64,0x73,0x74,0x72,0x65,0x61,0x6D], out = [];
+  for (let k = 0; k < starts.length; k++){
+    const s0 = starts[k], limit = Math.min(file.size, s0 + 40 * 1048576);
+    const buf = new Uint8Array(await file.slice(s0, limit).arrayBuffer());
+    let end = -1;
+    for (let i = buf.indexOf(0x65); i >= 0; i = buf.indexOf(0x65, i + 1)){ let ok = true; for (let q = 1; q < END.length; q++) if (buf[i+q] !== END[q]){ ok = false; break; } if (ok){ end = i; break; } }
+    if (end < 0) continue;
+    let e = end; while (e > 2 && !(buf[e-2] === 0xFF && buf[e-1] === 0xD9)) { e--; if (end - e > 4) break; }
+    if (!(buf[e-2] === 0xFF && buf[e-1] === 0xD9)) e = end;
+    out.push({name: 'p' + String(out.length + 1).padStart(5, '0') + '.jpg', blob: new Blob([buf.slice(0, e)], {type:'image/jpeg'})});
+    if (k % 4 === 0) onProgress && onProgress(.3 + .7 * (k + 1) / starts.length);
+  }
+  return out;
+}
+
+// items: [{file, path}] — path = chemin relatif (dossier/fichier.jpg)
+async function importItems(items){
+  if (!items.length) return;
+  const groups = new Map(); const archives = [], pdfs = []; let skipped = 0;
+  const addImg = (key, name, blob) => { if (!groups.has(key)) groups.set(key, []); groups.get(key).push({name, blob}); };
+  for (const {file, path} of items){
+    const name = file.name;
+    if (base(path).startsWith('.')) continue;
+    if (/\.(zip|cbz)$/i.test(name)) archives.push({file, path});
+    else if (/\.pdf$/i.test(name) || file.type === 'application/pdf') pdfs.push({file, path});
+    else if (IMG_RE.test(name) || /^image\//.test(file.type)) addImg(dirOf(path), name, file);
+    else skipped++;
+  }
+  // archives : un chapitre par dossier interne
+  const archiveGroups = [];
+  for (const {file, path} of archives){
+    toast('Ouverture de « ' + file.name + ' »…', null, true);
+    try {
+      const JSZip = await ensureZip(); const zip = await JSZip.loadAsync(file);
+      const inner = new Map();
+      for (const e of Object.values(zip.files)){
+        if (e.dir || /(^|\/)(__MACOSX|\.)/.test(e.name)) continue;
+        if (IMG_RE.test(e.name)) {
+          const k = dirOf(e.name); if (!inner.has(k)) inner.set(k, []);
+          inner.get(k).push(e);
+        } else if (/\.pdf$/i.test(e.name)) {
+          pdfs.push({file: new File([await e.async('blob')], base(e.name), {type:'application/pdf'}), path: stripExt(file.name) + '/' + e.name});
+        } else if (/\.(zip|cbz)$/i.test(e.name)) {
+          archives.push({file: new File([await e.async('blob')], base(e.name)), path: stripExt(file.name) + '/' + e.name});
+        }
+      }
+      const zipName = stripExt(file.name), parent = base(dirOf(path));
+      for (const [k, entries] of inner){
+        const multi = inner.size > 1;
+        archiveGroups.push({
+          title: multi ? (base(k) || zipName) : zipName,
+          series: multi ? zipName : parent,
+          load: () => Promise.all(entries.map(async e => {
+            const ext = e.name.split('.').pop().toLowerCase();
+            return {name: e.name, blob: new Blob([await e.async('arraybuffer')], {type: MIME[ext] || 'image/jpeg'})};
+          }))
+        });
+      }
+      if (!inner.size) skipped++;
+    } catch(err){ console.error(err); toast('« ' + file.name + ' » n\'a pas pu être ouvert.'); skipped++; }
+  }
+  const jobs = [];
+  for (const [k, blobs] of groups){
+    const title = k ? base(k) : 'Import du ' + new Date().toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+    jobs.push({kind:'images', title, series: base(dirOf(k)), count: blobs.length, load: async () => blobs});
+  }
+  for (const g of archiveGroups) jobs.push({kind:'images', title:g.title, series:g.series, count:0, load:g.load});
+  for (const {file, path} of pdfs) jobs.push({kind:'pdf', title: stripExt(file.name), series: base(dirOf(path)), file});
+
+  let made = 0, failed = 0, syncFailed = 0, syncErr = null, pdfFail = false;
+  for (let j = 0; j < jobs.length; j++){
+    const job = jobs[j]; const label = (jobs.length > 1 ? `(${j+1}/${jobs.length}) ` : '') + job.title;
+    try {
+      let ch;
+      if (job.kind === 'pdf'){
+        toast('Lecture de ' + label + '…', 0, true);
+        const blobs = await extractPdfImages(job.file, f => toast('Lecture de ' + label, f, true));
+        if (!blobs.length){ failed++; pdfFail = true; continue; }
+        let k = 0;
+        ch = await saveImageChapter({title:job.title, series:job.series, blobs}, () => toast('Import de ' + label, ++k / blobs.length, true));
+      }
+      else {
+        toast('Lecture de ' + label + '…', 0, true);
+        const blobs = await job.load(); let k = 0;
+        ch = await saveImageChapter({title:job.title, series:job.series, blobs}, () => toast('Import de ' + label, ++k / blobs.length, true));
+      }
+      if (!ch){ failed++; continue; }
+      made++;
+      if (Cloud.ready){ try { await syncChapter(ch, label); } catch(err){ console.error(err); syncFailed++; syncErr = err; } }
+    } catch(err){
+      console.error(err); failed++;
+      if (err && err.name === 'QuotaExceededError'){ toast('Plus de place disponible. Supprime des chapitres déjà lus puis réessaie.'); renderLibrary(); return; }
+    }
+  }
+  const parts = [];
+  parts.push(made ? `${made} chapitre${made>1?'s':''} ajouté${made>1?'s':''}.` : 'Aucun chapitre ajouté.');
+  if (failed) parts.push(`${failed} n'a pas pu être lu.` + (pdfFail ? ' Ce PDF n\'est pas un PDF de scans (images JPEG) : convertis-le en .cbz ou images.' : ''));
+  if (syncFailed) parts.push(syncMessage(syncErr));
+  refreshUsage();
+  if (skipped) parts.push(`${skipped} fichier${skipped>1?'s':''} ignoré${skipped>1?'s':''} (format non pris en charge, .cbr compris).`);
+  toast(parts.join(' '));
+  renderLibrary();
+}
+
+$('#btnFiles').onclick = () => $('#fileIn').click();
+$('#btnDir').onclick = () => $('#dirIn').click();
+if (matchMedia('(pointer:coarse)').matches || !('webkitdirectory' in document.createElement('input'))) $('#btnDir').hidden = true;
+$('#fileIn').onchange = e => { const f = [...e.target.files].map(file => ({file, path:file.name})); e.target.value = ''; importItems(f); };
+$('#dirIn').onchange = e => { const f = [...e.target.files].map(file => ({file, path:file.webkitRelativePath || file.name})); e.target.value = ''; importItems(f); };
+
+// glisser-déposer (fichiers et dossiers)
+let dragDepth = 0;
+addEventListener('dragenter', e => { if ([...(e.dataTransfer?.types||[])].includes('Files')){ dragDepth++; $('#drop').hidden = false; } });
+addEventListener('dragleave', () => { if (--dragDepth <= 0){ dragDepth = 0; $('#drop').hidden = true; } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', async e => {
+  e.preventDefault(); dragDepth = 0; $('#drop').hidden = true;
+  const entries = [...(e.dataTransfer.items||[])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!entries.length){ importItems([...e.dataTransfer.files].map(file => ({file, path:file.name}))); return; }
+  const out = [];
+  async function walk(entry, prefix){
+    if (entry.isFile){ const file = await new Promise((r, j) => entry.file(r, j)); out.push({file, path: prefix + file.name}); return; }
+    const reader = entry.createReader(); let batch;
+    do { batch = await new Promise((r, j) => reader.readEntries(r, j)); for (const c of batch) await walk(c, prefix + entry.name + '/'); } while (batch.length);
+  }
+  for (const en of entries) await walk(en, '');
+  importItems(out);
+});
+
+/* ---------------- bibliothèque ---------------- */
+let chapters = [];
+const thumbURLs = new Map();
+const thumbURL = c => { if (!c.thumb) return c.thumbId ? '/_blob/' + c.thumbId : '';if (!thumbURLs.has(c.id)) thumbURLs.set(c.id, URL.createObjectURL(c.thumb)); return thumbURLs.get(c.id); };
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const bySeries = list => { const m = new Map(); for (const c of list){ const k = c.series || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(c); }
+  for (const a of m.values()) a.sort((x, y) => coll.compare(x.title, y.title)); return m; };
+
+function cardHTML(c){
+  const pct = c.done ? 100 : c.count > 1 ? Math.round(c.page / (c.count - 1) * 100) : 0;
+  const chip = c.done ? '<span class="chip read">Lu</span>' : !c.lastRead ? '<span class="chip">Nouveau</span>' : '';
+  const sub = (c.done ? `${c.count} pages` : c.lastRead ? `p. ${c.page + 1} / ${c.count}` : `${c.count} pages${c.kind==='pdf' ? ' · PDF' : ''}`)
+    + (c.unsynced ? ' · sur cet appareil seulement' : '');
+  return `<div class="card">
+    <button class="cover" data-open="${c.id}" aria-label="Lire ${esc(c.title)}">${c.thumb || c.thumbId ?`<img src="${thumbURL(c)}" alt="" loading="lazy">` : ''}${chip}
+      ${c.lastRead && !c.done ? `<span class="prog"><i style="width:${pct}%"></i></span>` : ''}</button>
+    <div class="meta"><div><div class="name">${esc(c.title)}</div><div class="sub">${sub}</div></div>
+      <button class="more" data-menu="${c.id}" aria-label="Options pour ${esc(c.title)}">⋯</button></div></div>`;
+}
+
+async function renderLibrary(){
+  let local = [];
+  try { local = await DB.all(); } catch(e){}
+  const localMap = new Map(local.map(l => [l.id, l]));
+  chapters = [];
+  for (const [id, d] of Cloud.chapters){
+    const l = localMap.get(id) || null, p = Cloud.progress.get(id) || {};
+    chapters.push({...d, id, cloud:true, localRec:l, thumb: l ? l.thumb : null,
+      page: p.page ?? (l ? l.page : 0), lastRead: p.lastRead ?? (l ? l.lastRead : 0), done: p.done ?? (l ? l.done : false)});
+  }
+  for (const l of local) if (!Cloud.chapters.has(l.id) && !(l.synced && Cloud.loaded))
+    chapters.push({...l, cloud:false, localRec:l, unsynced: Cloud.ready && !l.demo && l.series !== 'Exemple' && !l.synced});
+  const q = $('#q').value.trim().toLowerCase();
+  const list = q ? chapters.filter(c => (c.title + ' ' + (c.series||'')).toLowerCase().includes(q)) : chapters;
+  const resume = chapters.filter(c => c.lastRead && !c.done).sort((a, b) => b.lastRead - a.lastRead).slice(0, 3);
+  $('#resume').innerHTML = q ? '' : resume.map(c => `<button class="resume-card" data-open="${c.id}">
+      ${thumbURL(c) ? `<img src="${thumbURL(c)}" alt="">` : '<span class="ph"></span>'}
+      <span class="t"><span class="eyebrow">Reprendre</span><b>${esc(c.title)}</b><small>${esc(c.series || 'Sans série')} · p. ${c.page + 1} / ${c.count}</small></span></button>`).join('');
+  const groups = [...bySeries(list)].sort((a, b) => (a[0] === '') - (b[0] === '') || coll.compare(a[0], b[0]));
+  $('#shelves').innerHTML = !chapters.length
+    ? `<div class="empty"><b>Ta bibliothèque est vide</b>Importe un dossier de scans, un .zip, un .cbz ou un PDF pour commencer.</div>`
+    : !list.length ? `<div class="empty"><b>Aucun résultat</b>Rien ne correspond à « ${esc(q)} ».</div>`
+    : groups.map(([s, arr]) => `<section class="shelf"><h2>${esc(s || 'Sans série')}<small>${arr.length} chapitre${arr.length>1?'s':''}${s === 'Exemple' ? ' · généré pour la démo' : ''}</small></h2>
+        <div class="grid">${arr.map(cardHTML).join('')}</div></section>`).join('');
+  const mo = b => (b / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: b > 1e9 ? 0 : 1}) + ' Mo';
+  let foot = `${chapters.length} chapitre${chapters.length>1?'s':''}.`;
+  if (Cloud.ready){
+    foot += ' Synchronisé entre tes appareils.';
+    if (Cloud.usage) foot += ` Espace de synchronisation : ${mo(Cloud.usage.bytes)} sur ${mo(Cloud.usage.maxBytes)}, ${Cloud.usage.files} fichiers sur ${Cloud.usage.maxFiles}.`;
+  } else foot += ' Enregistrés sur cet appareil, lisibles hors connexion.';
+  if (Cloud.note) foot += ' ' + Cloud.note;
+  try { if (navigator.storage && navigator.storage.estimate){ const est = await navigator.storage.estimate(); foot += ` Copie locale : ${mo(est.usage)}.`; } } catch(e){}
+  if (!(await DB.persistent())) foot += ' Stockage local indisponible dans ce navigateur.';
+  $('#foot').textContent = foot;
+  const pendingSync = chapters.filter(c => c.unsynced);
+  $('#syncAll').hidden = !pendingSync.length || syncing;
+  $('#syncAll').textContent = `Synchroniser ${pendingSync.length} chapitre${pendingSync.length>1?'s':''} de cet appareil`;
+  const orphans = orphanAssets();
+  $('#cleanUp').hidden = !orphans.length || cleaning || syncing;
+  if (orphans.length){
+    const bytes = orphans.reduce((s, a) => s + (a.sizeBytes || 0), 0);
+    $('#cleanUp').textContent = cleanArmed ? 'Toucher à nouveau pour supprimer'
+      : `Libérer ${mo(bytes)} (${orphans.length} fichier${orphans.length>1?'s':''} inutilisé${orphans.length>1?'s':''})`;
+  }
+}
+$('#cleanUp').onclick = () => { if (!cleanArmed){ cleanArmed = true; renderLibrary(); return; } cleanOrphans(); };
+$('#q').oninput = renderLibrary;
+let syncing = false;
+async function syncLocal(list){
+  if (syncing) return; syncing = true; $('#syncAll').hidden = true;
+  let ok = 0, err = null;
+  for (const c of list){ try { if (await syncChapter(c.localRec)) ok++; } catch(e){ console.error(e); err = e; if (e && /quota|rate|resource/.test(e.code || '')) break; } }
+  syncing = false;
+  toast(err ? (ok ? `${ok} chapitre${ok>1?'s':''} synchronisé${ok>1?'s':''}. ` : '') + syncMessage(err) : `${ok} chapitre${ok>1?'s':''} synchronisé${ok>1?'s':''}.`);
+  refreshUsage(); renderLibrary();
+}
+$('#syncAll').onclick = () => syncLocal(chapters.filter(c => c.unsynced));
+document.addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'); if (o){ const c = chapters.find(x => x.id === o.dataset.open); if (c) openReader(c); return; }
+  const m = e.target.closest('[data-menu]'); if (m){ const c = chapters.find(x => x.id === m.dataset.menu); if (c) openSheet(c); }
+});
+
+/* ---------------- feuille d'options ---------------- */
+let sheetCh = null, delArmed = false;
+function openSheet(c){
+  sheetCh = c; delArmed = false;
+  $('#shTitle').textContent = c.title; $('#shName').value = c.title; $('#shSeries').value = c.series || '';
+  $('#shRead').textContent = c.done || c.lastRead ? 'Marquer comme non lu' : 'Marquer comme lu';
+  $('#shDel').textContent = 'Supprimer'; $('#shSync').hidden = !c.unsynced;
+  $('#sheet').hidden = false; $('#shName').focus();
+}
+$('#shSync').onclick = () => { const c = sheetCh; closeSheet(); syncLocal([c]); };
+const closeSheet = () => { $('#sheet').hidden = true; sheetCh = null; };
+$('#shClose').onclick = closeSheet;
+$('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
+$('#shSave').onclick = async () => {
+  const c = sheetCh, title = $('#shName').value.trim() || c.title, series = $('#shSeries').value.trim();
+  closeSheet();
+  try {
+    if (c.localRec){ Object.assign(c.localRec, {title, series}); await DB.put(c.localRec); }
+    if (c.cloud) await Cloud.db.doc('chapters/' + c.id).update({title, series});
+    toast('Modifications enregistrées.');
+  } catch(e){ console.error(e); toast('Enregistrement impossible pour le moment, réessaie.'); }
+  renderLibrary();
+};
+$('#shRead').onclick = () => {
+  const c = sheetCh;
+  setProgress(c, c.done || c.lastRead ? {done:false, lastRead:0, page:0} : {done:true, lastRead:Date.now(), page:c.count - 1});
+  closeSheet(); renderLibrary();
+};
+$('#shDel').onclick = async () => {
+  if (!delArmed){ delArmed = true; $('#shDel').textContent = 'Toucher à nouveau pour supprimer'; return; }
+  const c = sheetCh; closeSheet();
+  try {
+    if (c.cloud){
+      toast('Suppression de « ' + c.title + ' »…', null, true);
+      await Cloud.db.doc('chapters/' + c.id).delete();
+      await Cloud.db.doc('progress/' + c.id).delete();
+      for (const id of [c.thumbId, c.pdfId, ...(c.pageIds || [])].filter(Boolean)) await Cloud.assets.delete(id).catch(() => {});
+      refreshUsage();
+    }
+    if (c.localRec) await DB.remove(c.localRec);
+    toast('« ' + c.title + ' » supprimé.');
+  } catch(e){ console.error(e); toast('Suppression impossible pour le moment, réessaie.'); }
+  renderLibrary();
+};
+
+/* ---------------- lecteur ---------------- */
+const S = Object.assign({mode:'scroll', dir:'ltr', fit:'screen', gap:'off', turn:'on', width:900}, ls.get('liseuse-settings', {}));
+const R = {ch:null, urls:new Map(), pending:new Map(), pdf:null, page:0, io:null, saveT:null};
+const reader = $('#reader'), pagesEl = $('#pages');
+
+function siblings(c){ return chapters.filter(x => (x.series||'') === (c.series||'')).sort((a, b) => coll.compare(a.title, b.title)); }
+function neighbor(d){ const s = siblings(R.ch); const i = s.findIndex(x => x.id === R.ch.id); return s[i + d] || null; }
+const targetW = () => Math.min(2400, Math.round(Math.min(innerWidth, S.width) * (devicePixelRatio || 1)));
+
+function pageURL(i){
+  if (R.urls.has(i)) return Promise.resolve(R.urls.get(i));
+  if (R.pending.has(i)) return R.pending.get(i);
+  const ch = R.ch;
+  const p = (async () => {
+    let blob;
+    if (ch.kind === 'pdf'){
+      if (!R.pdf) R.pdf = (async () => {
+        let b = await DB.getBlob(ch.id + ':pdf').catch(() => null);
+        if (!b && ch.pdfId){ const r = await fetch('/_blob/' + ch.pdfId); if (!r.ok) throw new Error('pdf ' + r.status); b = await r.blob(); }
+        return openPdf(b);
+      })();
+      const doc = await R.pdf; if (R.ch !== ch) return null;
+      blob = await enqueue(() => R.ch === ch ? renderPdfPage(doc, i, targetW()) : null);
+    } else {
+      blob = await DB.getBlob(ch.id + ':' + i).catch(() => null);
+      if (!blob && ch.pageIds && ch.pageIds[i]){ const u = '/_blob/' + ch.pageIds[i]; R.urls.set(i, u); return u; }
+    }
+    if (R.ch !== ch || !blob) return null;
+    const u = URL.createObjectURL(blob); R.urls.set(i, u); return u;
+  })().finally(() => R.pending.delete(i));
+  R.pending.set(i, p); return p;
+}
+
+function applyVars(){
+  reader.style.setProperty('--readw', S.width + 'px');
+  $('#widthIn').value = S.width; $('#widthVal').textContent = S.width + ' px';
+  document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', S[seg.dataset.set] === b.dataset.val)));
+  $('#slider').classList.toggle('rtl', S.mode === 'paged' && S.dir === 'rtl');
+}
+
+function openReader(c){
+  R.ch = c; R.page = Math.min(c.page || 0, c.count - 1);
+  if (c.done) R.page = 0;
+  $('#rTitle').textContent = c.title; $('#rSeries').textContent = c.series || 'Sans série';
+  $('#slider').max = c.count;
+  $('#rPrevCh').disabled = !neighbor(-1); $('#rNextCh').disabled = !neighbor(1);
+  reader.hidden = false; reader.classList.remove('hide-bars'); $('#settings').hidden = true;
+  document.body.style.overflow = 'hidden';
+  applyVars(); build();
+  reader.focus && reader.focus();
+}
+function exitFull(){ try { const fe = document.fullscreenElement || document.webkitFullscreenElement; if (fe) (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch(e){} }
+async function enterFull(){
+  reader.classList.add('hide-bars'); $('#settings').hidden = true;
+  const el = document.documentElement;
+  try { if (el.requestFullscreen) await el.requestFullscreen({navigationUI:'hide'}); else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } catch(e){}
+}
+function closeReader(){
+  abortTurn(); R.imgs = new Map(); freeTurnSurface(); exitFull();
+  saveProgress(true);
+  R.io && R.io.disconnect(); R.io = null;
+  for (const u of R.urls.values()) URL.revokeObjectURL(u);
+  R.urls.clear(); R.pending.clear();
+  if (R.pdf) R.pdf.then(d => d && d.destroy()).catch(()=>{}); R.pdf = null;
+  R.ch = null; reader.hidden = true; pagesEl.innerHTML = ''; document.body.style.overflow = '';
+  renderLibrary();
+}
+function switchChapter(c){ if (!c) return; saveProgress(true); const keep = c; closeReaderQuiet(); openReader(keep); }
+function closeReaderQuiet(){
+  abortTurn(); R.imgs = new Map(); freeTurnSurface();
+  R.io && R.io.disconnect(); R.io = null;
+  for (const u of R.urls.values()) URL.revokeObjectURL(u); R.urls.clear(); R.pending.clear();
+  if (R.pdf) R.pdf.then(d => d && d.destroy()).catch(()=>{}); R.pdf = null;
+}
+
+function setPage(i){
+  R.page = i;
+  $('#rNum').textContent = `${i + 1} / ${R.ch.count}`;
+  $('#slider').value = i + 1;
+  clearTimeout(R.saveT); R.saveT = setTimeout(saveProgress, 600);
+}
+function saveProgress(now){
+  const c = R.ch; if (!c) return; clearTimeout(R.saveT);
+  if (c.page === R.page && c.lastRead && Date.now() - c.lastRead < 1500) return;
+  setProgress(c, {page:R.page, lastRead:Date.now(), done: c.done || R.page >= c.count - 1});
+}
+
+function endCard(){
+  const nx = neighbor(1);
+  return `<div class="endcard"><h3>Fin de « ${esc(R.ch.title)} »</h3>
+    <p>${nx ? 'Suivant : ' + esc(nx.title) : 'C\'était le dernier chapitre de cette série dans ta bibliothèque.'}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      ${nx ? `<button class="rbtn primary" data-next>Chapitre suivant</button>` : ''}<button class="rbtn" data-back>Bibliothèque</button></div></div>`;
+}
+
+function build(){
+  R.io && R.io.disconnect(); abortTurn();
+  pagesEl.scrollTop = 0;
+  if (S.mode === 'scroll') buildScroll(); else buildPaged();
+}
+
+function buildScroll(){
+  pagesEl.className = 'pages scroll' + (S.gap === 'on' ? ' gap' : '');
+  pagesEl.innerHTML = R.ch.dims.map((d, i) => `<div class="pg" data-i="${i}" style="aspect-ratio:${d[0]} / ${d[1]}"><span class="num">${i + 1}</span></div>`).join('') + endCard();
+  const pgs = [...pagesEl.querySelectorAll('.pg')];
+  R.io = new IntersectionObserver(ents => {
+    for (const en of ents){
+      if (!en.isIntersecting) continue; const el = en.target; R.io.unobserve(el);
+      const i = +el.dataset.i;
+      pageURL(i).then(u => { if (!u || !el.isConnected) return; const im = new Image(); im.alt = 'Page ' + (i + 1); im.decoding = 'async'; im.src = u;
+        im.onload = () => { el.innerHTML = ''; el.appendChild(im); }; })
+        .catch(() => { el.querySelector('.num').textContent = 'Page ' + (i + 1) + ' illisible'; });
+    }
+  }, {root: pagesEl, rootMargin: '150% 0px'});
+  pgs.forEach(p => R.io.observe(p));
+  const target = pgs[R.page];
+  requestAnimationFrame(() => { if (target) pagesEl.scrollTop = target.offsetTop; setPage(R.page); });
+  let raf = 0;
+  pagesEl.onscroll = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0; const line = pagesEl.scrollTop + pagesEl.clientHeight * .35;
+      let lo = 0, hi = pgs.length - 1;
+      while (lo < hi){ const mid = (lo + hi + 1) >> 1; if (pgs[mid].offsetTop <= line) lo = mid; else hi = mid - 1; }
+      if (lo !== R.page) setPage(lo);
+      const atEnd = pagesEl.scrollTop + pagesEl.clientHeight >= pagesEl.scrollHeight - 40;
+      if (atEnd && R.page !== R.ch.count - 1) setPage(R.ch.count - 1);
+    });
+  };
+}
+
+let showToken = 0;
+function buildPaged(){
+  pagesEl.onscroll = null;
+  pagesEl.className = 'pages paged fit-' + S.fit;
+  pagesEl.innerHTML = '<img class="single" alt="" draggable="false">';
+  showPage(R.page);
+}
+// ---------- page qui se tourne et se plie (canvas) ----------
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let turnBroken = false; // si le navigateur refuse le dessin (mémoire iPhone), on coupe l'effet au lieu de bloquer
+const turnOn = () => S.mode === 'paged' && S.turn !== 'off' && !reduceMotion.matches && !turnBroken;
+R.imgs = new Map();
+// ne garde décodées que les pages autour de la page courante (sinon l'iPhone sature sa mémoire)
+function trimImgs(){
+  for (const [k, p] of R.imgs) if (k < R.page - 2 || k > R.page + 3){ R.imgs.delete(k); p.then(im => { im.src = ''; }).catch(() => {}); }
+}
+function getImg(i){
+  if (!R.imgs.has(i)){
+    const ch = R.ch;
+    const p = pageURL(i).then(async u => { if (!u || R.ch !== ch) throw new Error('page'); const im = new Image(); im.src = u; try { await im.decode(); } catch(e){ if (!im.naturalWidth) throw e; } return im; });
+    p.catch(() => R.imgs.delete(i)); R.imgs.set(i, p);
+  }
+  return R.imgs.get(i);
+}
+function fitRect(im){
+  const W = pagesEl.clientWidth, H = pagesEl.clientHeight, w = im.naturalWidth, h = im.naturalHeight;
+  if (S.fit === 'width'){ const dw = Math.min(W, S.width), dh = h * dw / w; return {x:(W - dw) / 2, y:0, w:dw, h:dh}; }
+  const s = Math.min(W / w, H / h, 1), dw = w * s, dh = h * s;
+  return {x:(W - dw) / 2, y:(H - dh) / 2, w:dw, h:dh};
+}
+function clipHalf(poly, M, n, side){
+  const out = [], f = p => side * ((p[0] - M.x) * n.x + (p[1] - M.y) * n.y);
+  for (let k = 0; k < poly.length; k++){
+    const a = poly[k], b = poly[(k + 1) % poly.length], fa = f(a), fb = f(b);
+    if (fa >= 0) out.push(a);
+    if ((fa >= 0) !== (fb >= 0)){ const t = fa / (fa - fb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+  }
+  return out;
+}
+const tracePoly = (ctx, p) => { ctx.beginPath(); p.forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); };
+function constrainP(t, P){
+  const {A, sx, C} = t, S1 = {x:sx, y:C.y}, S2 = {x:sx, y: C.y === A.y ? A.y + A.h : A.y}, diag = Math.hypot(A.w, A.h);
+  let vx = P.x - S1.x, vy = P.y - S1.y, d = Math.hypot(vx, vy);
+  if (d > A.w){ P = {x:S1.x + vx * A.w / d, y:S1.y + vy * A.w / d}; }
+  vx = P.x - S2.x; vy = P.y - S2.y; d = Math.hypot(vx, vy);
+  if (d > diag){ P = {x:S2.x + vx * diag / d, y:S2.y + vy * diag / d}; }
+  return P;
+}
+function drawTurn(t){
+  const {ctx, A, B, top, under, C} = t, W = pagesEl.clientWidth, H = pagesEl.clientHeight, dpr = t.dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const L = Math.min(A.x, B.x), Tp = Math.min(A.y, B.y), Rr = Math.max(A.x + A.w, B.x + B.w), Bt = Math.max(A.y + A.h, B.y + B.h);
+  ctx.save(); ctx.beginPath(); ctx.rect(L, Tp, Rr - L, Bt - Tp); ctx.clip();
+  ctx.drawImage(under, B.x, B.y, B.w, B.h);
+  const P = t.P = constrainP(t, t.P);
+  const dx = C.x - P.x, dy = C.y - P.y, len = Math.hypot(dx, dy);
+  if (len < 0.5){ ctx.drawImage(top, A.x, A.y, A.w, A.h); ctx.restore(); return; }
+  const n = {x:dx / len, y:dy / len}, M = {x:(C.x + P.x) / 2, y:(C.y + P.y) / 2};
+  const rect = [[A.x, A.y], [A.x + A.w, A.y], [A.x + A.w, A.y + A.h], [A.x, A.y + A.h]];
+  const stay = clipHalf(rect, M, n, -1), fold = clipHalf(rect, M, n, 1);
+  const prog = Math.min(1, len / (2 * A.w));
+  // ombre portée sur la page révélée, le long du pli
+  if (fold.length > 2){
+    const sw = Math.max(12, Math.min(len * .45, A.w * .3));
+    ctx.save(); tracePoly(ctx, fold); ctx.clip();
+    const g = ctx.createLinearGradient(M.x, M.y, M.x + n.x * sw, M.y + n.y * sw);
+    g.addColorStop(0, `rgba(0,0,0,${.55 * (1 - prog * .6)})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(L, Tp, Rr - L, Bt - Tp); ctx.restore();
+  }
+  // partie encore à plat de la page qui tourne
+  if (stay.length > 2){
+    ctx.save(); tracePoly(ctx, stay); ctx.clip(); ctx.drawImage(top, A.x, A.y, A.w, A.h);
+    // la feuille se bombe en approchant du pli
+    const bw = Math.min(A.w * .35, len * .6);
+    const g = ctx.createLinearGradient(M.x, M.y, M.x - n.x * bw, M.y - n.y * bw);
+    g.addColorStop(0, 'rgba(0,0,0,.22)'); g.addColorStop(.35, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(L, Tp, Rr - L, Bt - Tp); ctx.restore();
+  }
+  // rabat : le dos de la feuille, replié par-dessus
+  if (fold.length > 2){
+    const k = (M.x * n.x + M.y * n.y) * 2;
+    const ra = 1 - 2 * n.x * n.x, rb = -2 * n.x * n.y, rd = 1 - 2 * n.y * n.y, re = k * n.x, rf = k * n.y;
+    const flap = fold.map(p => [ra * p[0] + rb * p[1] + re, rb * p[0] + rd * p[1] + rf]);
+    let depth = 0; for (const p of flap) depth = Math.max(depth, -((p[0] - M.x) * n.x + (p[1] - M.y) * n.y));
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 28; ctx.shadowOffsetX = -n.x * 6; ctx.shadowOffsetY = -n.y * 6;
+    tracePoly(ctx, flap); ctx.fillStyle = '#efebe3'; ctx.fill(); ctx.restore();
+    ctx.save(); tracePoly(ctx, flap); ctx.clip();
+    ctx.globalAlpha = .16; ctx.transform(ra, rb, rb, rd, re, rf); ctx.drawImage(top, A.x, A.y, A.w, A.h);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1;
+    const dd = Math.max(depth, 1);
+    const g = ctx.createLinearGradient(M.x, M.y, M.x - n.x * dd, M.y - n.y * dd);
+    g.addColorStop(0, 'rgba(0,0,0,.30)'); g.addColorStop(.12, 'rgba(0,0,0,.05)'); g.addColorStop(.3, 'rgba(255,255,255,.28)');
+    g.addColorStop(.7, 'rgba(255,255,255,.04)'); g.addColorStop(1, 'rgba(0,0,0,.16)');
+    ctx.fillStyle = g; ctx.fillRect(L, Tp, Rr - L, Bt - Tp); ctx.restore();
+  }
+  ctx.restore();
+}
+let turn = null;
+async function beginTurn(d, cornerY){
+  if (turn || R.atEnd) return null;
+  const target = R.page + d; if (target < 0 || target >= R.ch.count) return null;
+  const cur = pagesEl.querySelector('img.single'); if (!cur || !cur.complete || !cur.naturalWidth) return null;
+  const ch = R.ch, other = await getImg(target).catch(() => null);
+  if (!other || R.ch !== ch || turn || R.atEnd || R.page + d !== target) return null;
+  const pr = pagesEl.getBoundingClientRect(), r = cur.getBoundingClientRect();
+  const curRect = {x:r.left - pr.left, y:r.top - pr.top, w:r.width, h:r.height}, otherRect = fitRect(other);
+  const fwd = d > 0, rtl = S.dir === 'rtl';
+  const A = fwd ? curRect : otherRect, B = fwd ? otherRect : curRect;
+  const sx = rtl ? A.x + A.w : A.x, ex = rtl ? A.x : A.x + A.w;
+  const bottom = cornerY == null ? true : cornerY > A.y + A.h * .4;
+  const C = {x:ex, y: bottom ? A.y + A.h : A.y}, T = {x:2 * sx - ex, y:C.y};
+  const dpr = Math.min(2, devicePixelRatio || 1), canvas = turnSurface(dpr), ctx = canvas && canvas.getContext('2d');
+  if (!ctx){ turnBroken = true; return null; }
+  turn = {d, target, cur, top: fwd ? cur : other, under: fwd ? other : cur, A, B, sx, C, T, bottom, P: fwd ? {...C} : {...T},
+    canvas, ctx, dpr, raf: 0, onEnd: null};
+  canvas.hidden = false;
+  if (!safeDraw(turn, false)) return null;
+  cur.style.visibility = 'hidden';
+  reader.classList.add('hide-bars'); $('#settings').hidden = true;
+  return turn;
+}
+// une seule surface de dessin, réutilisée à chaque page (en créer une par page épuise la mémoire de l'iPhone)
+let turnCanvas = null;
+function turnSurface(dpr){
+  try {
+    if (!turnCanvas){ turnCanvas = document.createElement('canvas'); turnCanvas.className = 'turn-canvas'; turnCanvas.hidden = true; }
+    if (!turnCanvas.isConnected) reader.insertBefore(turnCanvas, pagesEl.nextSibling);
+    const w = Math.round(pagesEl.clientWidth * dpr), h = Math.round(pagesEl.clientHeight * dpr);
+    if (turnCanvas.width !== w || turnCanvas.height !== h){ turnCanvas.width = w; turnCanvas.height = h; }
+    return turnCanvas;
+  } catch(e){ return null; }
+}
+function freeTurnSurface(){ if (turnCanvas){ turnCanvas.width = turnCanvas.height = 0; turnCanvas.remove(); turnCanvas = null; } }
+function safeDraw(t, jump = true){
+  try { drawTurn(t); return true; }
+  catch(e){ console.error(e); turnBroken = true; const target = t.target; endTurn(t, false); if (jump) showPage(target); return false; }
+}
+function endTurn(t, completed){
+  if (turn !== t) return;
+  cancelAnimationFrame(t.raf); turn = null;
+  if (completed){ t.cur.src = (t.d > 0 ? t.under : t.top).src; pagesEl.scrollTop = 0; }
+  t.cur.style.visibility = '';
+  try { t.ctx.setTransform(1, 0, 0, 1, 0, 0); t.ctx.clearRect(0, 0, t.canvas.width, t.canvas.height); } catch(e){}
+  t.canvas.hidden = true;
+  if (completed) showPage(t.target);
+}
+function abortTurn(){ if (turn) endTurn(turn, false); }
+function animateTurn(t, to, dur, lift, done){
+  const from = {...t.P}, t0 = performance.now(), ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  t.onEnd = done;
+  const tick = now => {
+    if (turn !== t) return;
+    const x = Math.min(1, (now - t0) / dur), e = ease(x);
+    t.P = {x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e + (t.bottom ? -1 : 1) * Math.sin(Math.PI * e) * lift};
+    if (!safeDraw(t)) return;
+    if (x < 1) t.raf = requestAnimationFrame(tick); else { t.onEnd = null; done(); }
+  };
+  t.raf = requestAnimationFrame(tick);
+}
+// termine tout de suite l'animation en cours (tapotements rapides)
+function rushTurn(){ if (turn && turn.onEnd){ const f = turn.onEnd; cancelAnimationFrame(turn.raf); turn.onEnd = null; f(); } }
+async function turnStep(d){
+  rushTurn();
+  const t = await beginTurn(d);
+  if (!t){ if (!turn) showPage(R.page + d); return; }
+  const fwd = d > 0;
+  animateTurn(t, fwd ? t.T : t.C, 720, t.A.h * .1, () => endTurn(t, true));
+}
+
+async function showPage(i){
+  abortTurn();
+  if (i >= R.ch.count){ pagesEl.innerHTML = endCard(); R.atEnd = true; return; }
+  if (R.atEnd || !pagesEl.querySelector('img.single')){ pagesEl.innerHTML = '<img class="single" alt="" draggable="false">'; R.atEnd = false; }
+  i = Math.max(0, i); setPage(i); trimImgs();
+  const tok = ++showToken; const img = pagesEl.querySelector('img.single');
+  const u = await pageURL(i).catch(() => null);
+  if (tok !== showToken) return;
+  const miss = pagesEl.querySelector('.miss'); if (miss) miss.remove();
+  if (!u){
+    // page introuvable : on le dit au lieu d'un écran noir
+    img.removeAttribute('src');
+    const m = document.createElement('div'); m.className = 'endcard miss';
+    m.innerHTML = '<h3>Page ' + (i + 1) + ' introuvable</h3><p>' + (R.ch.cloud ? 'Elle n\'a pas pu être chargée. Vérifie ta connexion puis rouvre le chapitre.' : 'Les images de ce chapitre ne sont plus sur cet appareil. Réimporte-le.') + '</p><div><button class="rbtn" data-back>Bibliothèque</button></div>';
+    pagesEl.appendChild(m); reader.classList.remove('hide-bars'); return;
+  }
+  img.onerror = () => { img.onerror = null; R.retried = R.retried || new Set();
+    if (R.page === i && !R.retried.has(i)){ R.retried.add(i); R.urls.delete(i); showPage(i); } };
+  if (img.getAttribute('src') !== u) img.src = u;
+  img.alt = 'Page ' + (i + 1); pagesEl.scrollTop = 0;
+  for (const k of [i + 1, i - 1, i + 2]) if (k >= 0 && k < R.ch.count) (turnOn() ? getImg(k) : pageURL(k)).catch(()=>{});
+}
+const step = d => {
+  if (S.mode !== 'paged') return;
+  if (R.atEnd){ if (d < 0) showPage(R.ch.count - 1); return; }
+  if (turnOn() && R.page + d < R.ch.count) turnStep(d); else showPage(R.page + d);
+};
+function goTo(i){
+  if (S.mode === 'scroll'){ const el = pagesEl.querySelectorAll('.pg')[i]; if (el) pagesEl.scrollTop = el.offsetTop; setPage(i); }
+  else showPage(i);
+}
+
+// interactions
+let touch = null, swiped = false;
+pagesEl.addEventListener('touchstart', e => { if (e.touches.length === 1) touch = {x:e.touches[0].clientX, y:e.touches[0].clientY}; else touch = null; }, {passive:true});
+pagesEl.addEventListener('touchend', e => {
+  if (!touch || S.mode !== 'paged' || turnOn()) return;
+  const t = e.changedTouches[0], dx = t.clientX - touch.x, dy = t.clientY - touch.y; touch = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5){ swiped = true; const fwd = dx < 0; step((fwd ? 1 : -1) * (S.dir === 'rtl' ? -1 : 1)); }
+});
+let drag = null;
+const swipeDir = dx => ((dx < 0) !== (S.dir === 'rtl')) ? 1 : -1;
+function releaseDrag(fling){
+  const g = drag; drag = null; if (!g) return;
+  if (g.state !== 'drag' || !g.t || turn !== g.t){ if (g.state === 'starting') g.released = fling; return; }
+  const vx = performance.now() - g.lt > 90 ? 0 : g.vx; // doigt immobile avant de lâcher : pas d'élan
+  const t = g.t, moved = Math.abs(t.P.x - g.base.x), v = vx *(t.d > 0 ? -1 : 1) * (S.dir === 'rtl' ? -1 : 1);
+  const complete = fling || v > .35 || (v > -.2 && moved > t.A.w * .3);
+  const to = t.d > 0 ? (complete ? t.T : t.C) : (complete ? t.C : t.T);
+  const dist = Math.hypot(to.x - t.P.x, to.y - t.P.y);
+  animateTurn(t, to, Math.max(180, Math.min(520, dist * 1.1)), 0, () => endTurn(t, (t.d > 0) === (to === t.T) ? true : false));
+  setTimeout(() => { swiped = false; }, 400);
+}
+pagesEl.addEventListener('pointerdown', e => {
+  if (!turnOn() || R.atEnd || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  rushTurn();
+  drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, state:'pending', vx:0, lx:e.clientX, lt:performance.now()};
+});
+pagesEl.addEventListener('pointermove', async e => {
+  const g = drag; if (!g || e.pointerId !== g.id) return;
+  const now = performance.now(), dtm = Math.max(1, now - g.lt);
+  g.vx = g.vx * .6 + ((e.clientX - g.lx) / dtm) * .4; g.lx = e.clientX; g.lt = now;
+  const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+  if (g.state === 'pending'){
+    if (Math.hypot(dx, dy) < 10) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.1){ drag = null; return; }
+    g.state = 'starting'; swiped = true;
+    try { pagesEl.setPointerCapture(g.id); } catch(err){}
+    const pr = pagesEl.getBoundingClientRect();
+    const t = await beginTurn(swipeDir(dx), g.y0 - pr.top);
+    if (!t){ if (drag === g) drag = null; setTimeout(() => { swiped = false; }, 400); return; }
+    g.t = t; g.base = {...t.P}; g.state = 'drag';
+    if (drag !== g){ drag = g; releaseDrag(g.released !== false); return; }
+  }
+  if (g.state === 'drag' && turn === g.t){
+    g.t.P = {x: g.base.x + dx, y: g.base.y + dy * .6};
+    safeDraw(g.t);
+  }
+});
+pagesEl.addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) releaseDrag(false); });
+pagesEl.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) releaseDrag(false); });
+pagesEl.addEventListener('click', e => {
+  if (e.target.closest('[data-next]')){ switchChapter(neighbor(1)); return; }
+  if (e.target.closest('[data-back]')){ closeReader(); return; }
+  if (swiped){ swiped = false; return; }
+  if (!$('#settings').hidden){ $('#settings').hidden = true; return; }
+  if (S.mode === 'paged'){
+    const x = e.clientX / innerWidth;
+    if (x < .3){ step(S.dir === 'rtl' ? 1 : -1); return; }
+    if (x > .7){ step(S.dir === 'rtl' ? -1 : 1); return; }
+  }
+  reader.classList.toggle('hide-bars');
+});
+addEventListener('keydown', e => {
+  if (reader.hidden){ if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); return; }
+  if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if (e.key === 'Escape'){ if (!$('#settings').hidden) $('#settings').hidden = true; else closeReader(); return; }
+  if (S.mode !== 'paged') return;
+  const rtl = S.dir === 'rtl';
+  if (e.key === 'ArrowRight'){ e.preventDefault(); step(rtl ? -1 : 1); }
+  else if (e.key === 'ArrowLeft'){ e.preventDefault(); step(rtl ? 1 : -1); }
+  else if (e.key === ' ' || e.key === 'PageDown'){ e.preventDefault(); step(1); }
+  else if (e.key === 'PageUp'){ e.preventDefault(); step(-1); }
+});
+$('#rBack').onclick = closeReader;
+$('#rFull').onclick = enterFull;
+if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) $('#rFull').hidden = true;
+addEventListener('resize', abortTurn);
+$('#rPrevCh').onclick = () => switchChapter(neighbor(-1));
+$('#rNextCh').onclick = () => switchChapter(neighbor(1));
+$('#rSet').onclick = () => { $('#settings').hidden = !$('#settings').hidden; };
+$('#slider').oninput = e => { const i = +e.target.value - 1; $('#rNum').textContent = `${i + 1} / ${R.ch.count}`; };
+$('#slider').onchange = e => goTo(+e.target.value - 1);
+document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const key = seg.dataset.set; if (S[key] === b.dataset.val) return;
+  S[key] = b.dataset.val; ls.set('liseuse-settings', S); applyVars();
+  if (key === 'gap') pagesEl.classList.toggle('gap', S.gap === 'on');
+  else if (key === 'mode' || key === 'fit'){ R.atEnd = false; build(); }
+}));
+$('#widthIn').oninput = e => { S.width = +e.target.value; ls.set('liseuse-settings', S); applyVars(); };
+addEventListener('pagehide', () => saveProgress(true));
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveProgress(true); });
+
+/* ---------------- chapitre d'exemple ---------------- */
+function demoPage(n, total){
+  const W = 900, H = 1300, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#fbfaf7'; g.fillRect(0, 0, W, H);
+  const layouts = [
+    [[40,40,820,520],[40,600,400,660],[460,600,400,660]],
+    [[40,40,400,380],[460,40,400,380],[40,460,820,800]],
+    [[40,40,820,300],[40,380,540,880],[620,380,240,420],[620,840,240,420]],
+    [[40,40,260,600],[320,40,540,600],[40,680,820,580]],
+    [[40,40,820,1220]]
+  ];
+  const panels = layouts[(n - 1) % layouts.length];
+  panels.forEach(([x, y, w, h], k) => {
+    g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+    g.fillStyle = '#fff'; g.fillRect(x, y, w, h);
+    g.fillStyle = 'rgba(30,30,40,.18)';
+    for (let yy = y + h * .55; yy < y + h; yy += 9) for (let xx = x + ((yy / 9) % 2 ? 4 : 0); xx < x + w; xx += 9){ g.beginPath(); g.arc(xx, yy, 2.2, 0, 7); g.fill(); }
+    g.strokeStyle = '#222'; g.lineWidth = 3;
+    for (let r = 0; r < 14; r++){ const a = (r / 14) * Math.PI * 2 + k; g.beginPath(); g.moveTo(x + w/2 + Math.cos(a) * w * .12, y + h/2 + Math.sin(a) * h * .12); g.lineTo(x + w/2 + Math.cos(a) * w, y + h/2 + Math.sin(a) * h); g.globalAlpha = .25; g.stroke(); }
+    g.globalAlpha = 1;
+    g.beginPath(); g.ellipse(x + w * .3, y + h * .22, Math.min(170, w * .26), 62, 0, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 4; g.stroke();
+    g.fillStyle = '#111'; g.font = '600 30px Manrope, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(k === 0 ? 'Page ' + n : '…', x + w * .3, y + h * .22);
+    g.restore(); g.strokeStyle = '#111'; g.lineWidth = 6; g.strokeRect(x, y, w, h);
+  });
+  if (n === total){ g.fillStyle = 'rgba(255,255,255,.92)'; g.fillRect(120, 520, 660, 260); g.strokeRect(120, 520, 660, 260);
+    g.fillStyle = '#111'; g.textAlign = 'center'; g.font = '800 44px Unbounded, sans-serif'; g.fillText('Exemple', 450, 610);
+    g.font = '500 28px Manrope, sans-serif'; g.fillText('Supprime ce chapitre via « ⋯ »', 450, 680); g.fillText('et importe tes propres scans.', 450, 718); }
+  g.fillStyle = '#888'; g.font = '500 22px Manrope, sans-serif'; g.textAlign = 'right'; g.fillText(`Exemple · ${n} / ${total}`, W - 44, H - 14);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+}
+async function ensureDemo(){
+  if (chapters.length || ls.get('liseuse-demo', false)) return;
+  try { await document.fonts.ready; } catch(e){}
+  const blobs = []; for (let i = 1; i <= 5; i++) blobs.push({name: 'p' + i + '.jpg', blob: await demoPage(i, 5)});
+  const ch = await saveImageChapter({title:'Chapitre de démonstration', series:'Exemple', blobs}, () => {});
+  if (ch){ ch.demo = true; ch.page = 1;ch.lastRead = Date.now() - 3600e3; await DB.put(ch); }
+  ls.set('liseuse-demo', true);
+  await renderLibrary();
+}
+
+renderLibrary().then(ensureDemo);
+initCloud();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+
+</body></html>
